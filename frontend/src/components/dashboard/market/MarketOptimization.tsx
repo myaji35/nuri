@@ -120,9 +120,9 @@ export default function MarketOptimization() {
       {/* Market Prices Table */}
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-6">
         <h3 className="text-xl font-bold mb-4">도매시장 가격 정보</h3>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-80 overflow-y-auto">
           <table className="w-full">
-            <thead>
+            <thead className="sticky top-0 bg-white dark:bg-slate-800 z-10">
               <tr className="border-b border-slate-200 dark:border-slate-700">
                 <th className="text-left py-3 px-4">작물</th>
                 <th className="text-left py-3 px-4">시장</th>
@@ -133,7 +133,7 @@ export default function MarketOptimization() {
               </tr>
             </thead>
             <tbody>
-              {marketPrices.slice(0, 20).map((price, idx) => (
+              {marketPrices.map((price, idx) => (
                 <tr
                   key={idx}
                   className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30"
