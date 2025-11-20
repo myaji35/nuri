@@ -177,7 +177,7 @@ export default function SmartFarmTwin() {
         />
         <MetricCard
           title="전력 소비"
-          value={formatNumber(powerConsumption.toFixed(0))}
+          value={formatNumber(Math.floor(powerConsumption))}
           unit="kW"
           icon={Zap}
           status="good"
@@ -185,7 +185,7 @@ export default function SmartFarmTwin() {
         />
         <MetricCard
           title="물 사용량"
-          value={formatNumber(waterUsage.toFixed(0))}
+          value={formatNumber(Math.floor(waterUsage))}
           unit="L/h"
           icon={Settings}
           status="good"

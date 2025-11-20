@@ -88,3 +88,9 @@ The globe implementation requires:
 - `.vscode-upload.json`: VSCode remote sync configuration template
 
 When implementing features, always refer to the TRD for detailed specifications including data structures, API response formats, and specific implementation requirements.
+
+## Active Technologies
+- Python 3.11+ (001-langgraph-qa-system)
+
+## Recent Changes
+- 001-langgraph-qa-system: Added Python 3.11+

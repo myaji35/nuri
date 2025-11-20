@@ -1,0 +1,101 @@
+# Spec-Kit Agent Folder (may contain credentials)
+.claude/
+
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.pytest_cache/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Python
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+*.egg-info/
+.eggs/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.hypothesis/
+
+# Backend specific
+backend/.env
+backend/*.log
+backend/data/
+backend/uploads/
+
+# Frontend specific
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+*.ipynb
+
+# Redis dump
+dump.rdb
+
+# Crawler data
+backend/scrapy_data/
+*.jl
+*.jsonl
+
+# Temporary files
+*.tmp
+*.bak
+*.cache

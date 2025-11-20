@@ -1,0 +1,528 @@
+openapi: 3.0.3
+info:
+  title: NURI Q&A System API
+  description: |
+    LangGraph 기반 지능형 질문응답 시스템 API
+
+    **주요 기능**:
+    - 한국어/영어 자동 감지 및 동일 언어 응답
+    - 대화 이력 기반 맥락 유지
+    - 능동적 관련 질문 제안
+
+    **성능 목표**:
+    - 응답 시간 p95 < 3초
+    - 동시 요청 처리: 100 req/s
+  version: 1.0.0
+  contact:
+    name: NURI Platform Team
+    email: support@nuri-platform.com
+
+servers:
+  - url: https://api.nuri-platform.com
+    description: Production server
+  - url: https://staging-api.nuri-platform.com
+    description: Staging server
+  - url: http://localhost:8000
+    description: Local development
+
+tags:
+  - name: QA
+    description: 질문응답 관련 엔드포인트
+  - name: Session
+    description: 세션 관리 엔드포인트
+  - name: Health
+    description: 헬스체크 엔드포인트
+
+paths:
+  /api/v1/qa/ask:
+    post:
+      tags:
+        - QA
+      summary: 질문 제출 및 답변 받기
+      description: |
+        사용자 질문을 제출하고 LangGraph 에이전트로부터 답변을 받습니다.
+
+        **처리 흐름**:
+        1. 언어 감지 (langdetect + OpenAI 폴백)
+        2. 벡터 검색 (pgvector cosine similarity)
+        3. RAG 답변 생성 (gpt-4o-mini)
+        4. 관련 질문 제안 (최대 3개)
+
+        **응답 시간**: p95 < 3초
+      operationId: askQuestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionRequest'
+            examples:
+              korean_question:
+                summary: 한국어 질문
+                value:
+                  question: "NURI의 Tier 1 시장은 어디인가요?"
+                  session_id: "550e8400-e29b-41d4-a716-446655440000"
+              english_question:
+                summary: 영어 질문
+                value:
+                  question: "What is NURI's business model?"
+                  session_id: null
+      responses:
+        '200':
+          description: 답변 생성 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionResponse'
+              examples:
+                success_response:
+                  summary: 성공 응답
+                  value:
+                    session_id: "550e8400-e29b-41d4-a716-446655440000"
+                    question: "NURI의 Tier 1 시장은 어디인가요?"
+                    answer: "NURI의 Tier 1 시장은 한국입니다. 홈페이지의 '시장 전략' 섹션에 따르면, Tier 1은 이미 NURI 농장이 구축된 시장을 의미하며, 현재 한국 내 K1 사이트가 운영 중입니다."
+                    language: "ko"
+                    sources:
+                      - url: "https://nuri-platform.com/market-strategy"
+                        title: "시장 전략"
+                    confidence_score: 0.92
+                    suggested_questions:
+                      - "K1 사이트의 정확한 위치는 어디인가요?"
+                      - "Tier 2와 Tier 3 시장은 어디인가요?"
+                      - "NURI 농장의 규모는 어느 정도인가요?"
+                    processing_time_ms: 1850
+        '400':
+          description: 잘못된 요청 (유효성 검증 실패)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                empty_question:
+                  summary: 빈 질문
+                  value:
+                    error: "Validation error"
+                    message: "Question cannot be empty"
+                    code: "INVALID_INPUT"
+                too_long:
+                  summary: 너무 긴 질문
+                  value:
+                    error: "Validation error"
+                    message: "Question exceeds maximum length of 500 characters"
+                    code: "INVALID_INPUT"
+        '429':
+          description: Rate limit 초과
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Too many requests"
+                message: "Rate limit exceeded. Maximum 60 requests per minute."
+                code: "RATE_LIMIT_EXCEEDED"
+        '500':
+          description: 서버 내부 오류
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Internal server error"
+                message: "An unexpected error occurred while processing your request"
+                code: "INTERNAL_ERROR"
+
+  /api/v1/qa/sessions/{session_id}:
+    get:
+      tags:
+        - Session
+      summary: 세션 정보 조회
+      description: |
+        특정 세션의 대화 이력 및 메타데이터를 조회합니다.
+
+        **권한**: 세션 ID를 알고 있는 사용자만 접근 가능 (인증 불필요)
+      operationId: getSession
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: 세션 UUID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: 세션 정보 조회 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '404':
+          description: 세션을 찾을 수 없음 (만료 또는 존재하지 않음)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Session not found"
+                message: "The session has expired or does not exist"
+                code: "SESSION_NOT_FOUND"
+
+    delete:
+      tags:
+        - Session
+      summary: 세션 삭제
+      description: |
+        특정 세션을 즉시 삭제합니다. 대화 이력이 모두 제거됩니다.
+
+        **사용 사례**: 사용자가 대화를 종료하고 이력을 삭제하고 싶을 때
+      operationId: deleteSession
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: 세션 UUID
+      responses:
+        '204':
+          description: 세션 삭제 성공 (No Content)
+        '404':
+          description: 세션을 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/qa/feedback:
+    post:
+      tags:
+        - QA
+      summary: 답변 피드백 제출
+      description: |
+        사용자가 답변에 대한 피드백을 제출합니다 (유용함/유용하지 않음).
+
+        **분석 목적**: SC-003 메트릭 (70% 사용자 만족도) 측정
+      operationId: submitFeedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackRequest'
+      responses:
+        '200':
+          description: 피드백 제출 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Feedback submitted successfully"
+        '400':
+          description: 잘못된 요청
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/health:
+    get:
+      tags:
+        - Health
+      summary: 헬스체크
+      description: |
+        서비스 상태 확인
+
+        **체크 항목**:
+        - PostgreSQL 연결
+        - Redis 연결
+        - OpenAI API 연결
+      operationId: healthCheck
+      responses:
+        '200':
+          description: 서비스 정상
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "healthy"
+                timestamp: "2025-11-19T10:30:00Z"
+                services:
+                  postgres: "ok"
+                  redis: "ok"
+                  openai: "ok"
+        '503':
+          description: 서비스 비정상 (일부 의존성 실패)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "unhealthy"
+                timestamp: "2025-11-19T10:30:00Z"
+                services:
+                  postgres: "ok"
+                  redis: "failed"
+                  openai: "ok"
+
+components:
+  schemas:
+    QuestionRequest:
+      type: object
+      required:
+        - question
+      properties:
+        question:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: 사용자 질문
+          example: "NURI의 Tier 1 시장은 어디인가요?"
+        session_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: 기존 세션 ID (null이면 새 세션 생성)
+          example: "550e8400-e29b-41d4-a716-446655440000"
+
+    QuestionResponse:
+      type: object
+      required:
+        - session_id
+        - question
+        - answer
+        - language
+        - confidence_score
+        - processing_time_ms
+      properties:
+        session_id:
+          type: string
+          format: uuid
+          description: 세션 UUID (신규 또는 기존)
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        question:
+          type: string
+          description: 원본 질문
+          example: "NURI의 Tier 1 시장은 어디인가요?"
+        answer:
+          type: string
+          description: 생성된 답변
+          example: "NURI의 Tier 1 시장은 한국입니다..."
+        language:
+          type: string
+          enum: [ko, en]
+          description: 감지된 언어
+          example: "ko"
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceReference'
+          description: 답변 출처 목록
+        confidence_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: 답변 신뢰도 점수
+          example: 0.92
+        suggested_questions:
+          type: array
+          items:
+            type: string
+          maxItems: 3
+          description: 제안된 후속 질문 (최대 3개)
+          example:
+            - "K1 사이트의 정확한 위치는 어디인가요?"
+            - "Tier 2와 Tier 3 시장은 어디인가요?"
+        processing_time_ms:
+          type: integer
+          description: 처리 소요 시간 (밀리초)
+          example: 1850
+
+    SourceReference:
+      type: object
+      required:
+        - url
+        - title
+      properties:
+        url:
+          type: string
+          format: uri
+          description: 출처 페이지 URL
+          example: "https://nuri-platform.com/market-strategy"
+        title:
+          type: string
+          description: 출처 페이지 제목
+          example: "시장 전략"
+
+    SessionResponse:
+      type: object
+      required:
+        - session_id
+        - language
+        - created_at
+        - last_activity
+        - messages
+      properties:
+        session_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        language:
+          type: string
+          enum: [ko, en]
+          example: "ko"
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-11-19T10:00:00Z"
+        last_activity:
+          type: string
+          format: date-time
+          example: "2025-11-19T10:15:30Z"
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+
+    Message:
+      type: object
+      required:
+        - role
+        - content
+        - timestamp
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+          description: 메시지 발신자
+          example: "user"
+        content:
+          type: string
+          description: 메시지 내용
+          example: "NURI가 뭐예요?"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-11-19T10:00:00Z"
+        sources:
+          type: array
+          items:
+            type: string
+            format: uri
+          description: 답변 출처 (assistant만 해당)
+          example: ["https://nuri-platform.com/about"]
+        confidence_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: 답변 신뢰도 (assistant만 해당)
+          example: 0.92
+        suggested_questions:
+          type: array
+          items:
+            type: string
+          maxItems: 3
+          description: 제안 질문 (assistant만 해당)
+
+    FeedbackRequest:
+      type: object
+      required:
+        - session_id
+        - message_index
+        - rating
+      properties:
+        session_id:
+          type: string
+          format: uuid
+          description: 세션 UUID
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        message_index:
+          type: integer
+          minimum: 0
+          description: 피드백 대상 메시지 인덱스
+          example: 1
+        rating:
+          type: string
+          enum: [helpful, not_helpful]
+          description: 평가 (유용함/유용하지 않음)
+          example: "helpful"
+        comment:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: 추가 코멘트 (선택사항)
+          example: "매우 명확한 답변이었습니다."
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+        - services
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-11-19T10:30:00Z"
+        services:
+          type: object
+          properties:
+            postgres:
+              type: string
+              enum: [ok, failed]
+              example: "ok"
+            redis:
+              type: string
+              enum: [ok, failed]
+              example: "ok"
+            openai:
+              type: string
+              enum: [ok, failed]
+              example: "ok"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - code
+      properties:
+        error:
+          type: string
+          description: 오류 유형
+          example: "Validation error"
+        message:
+          type: string
+          description: 오류 상세 메시지
+          example: "Question cannot be empty"
+        code:
+          type: string
+          description: 오류 코드
+          example: "INVALID_INPUT"
+        details:
+          type: object
+          nullable: true
+          description: 추가 오류 세부사항
+          additionalProperties: true
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API 키 인증 (향후 확장 시 사용)
+        현재는 Rate Limiting만 적용 (IP 기반: 분당 60 요청)
+
+security: []  # 현재 인증 불필요 (익명 접근 허용)
