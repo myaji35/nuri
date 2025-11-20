@@ -96,7 +96,7 @@ export default function MarketOptimization() {
         />
         <MetricCard
           title="예상 총 생산량"
-          value={formatNumber(totalProduction.toFixed(0))}
+          value={formatNumber(Math.floor(totalProduction))}
           unit="kg"
           icon={Package}
           status="good"
