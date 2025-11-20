@@ -1,0 +1,58 @@
+{
+  "nav": {
+    "about": "About",
+    "business": "Business",
+    "innovation": "Innovation",
+    "social": "Social Impact",
+    "investor": "Investors",
+    "news": "News",
+    "contact": "Contact",
+    "login": "Login",
+    "signup": "Sign Up",
+    "dashboard": "Dashboard"
+  },
+  "hero": {
+    "title": "Connecting the World\nwith Data-Driven\nAgriculture Technology",
+    "subtitle": "Solving global challenges through sustainable agriculture and inclusive job creation. Innovating the future of farming with a data-driven approach and creating global social impact by growing together with people with developmental disabilities.",
+    "cta": "Learn More"
+  },
+  "about": {
+    "title": "Social Impact for a Better World",
+    "subtitle": "NURI is a global social venture that grows together with people with developmental disabilities, innovates the future of agriculture with smart farm technology, and creates sustainable social value through ESG management."
+  },
+  "services": {
+    "smartfarm": {
+      "title": "Smart Farm Construction",
+      "subtitle": "Turnkey Smart Farm Solution",
+      "description": "One-stop solution from design to operation with NURI Cell, warehouse racks, mobile racks, and microprocessor control"
+    },
+    "saas": {
+      "title": "SaaS Platform",
+      "subtitle": "Cloud-based Farm Management",
+      "description": "Efficiently manage smart farms and maximize profits with AI-based agricultural data analysis platform"
+    }
+  },
+  "login": {
+    "title": "Login to NURI Platform",
+    "email": "Email",
+    "password": "Password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "loginButton": "Login",
+    "noAccount": "Don't have an account?",
+    "signupLink": "Sign up",
+    "or": "OR",
+    "googleLogin": "Continue with Google",
+    "linkedinLogin": "Continue with LinkedIn"
+  },
+  "footer": {
+    "company": "Company",
+    "business": "Business",
+    "innovation": "Innovation",
+    "support": "Support",
+    "newsletter": "Newsletter",
+    "newsletterDesc": "Get the latest news and updates",
+    "subscribe": "Subscribe",
+    "rights": "All rights reserved"
+  }
+}
